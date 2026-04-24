@@ -7,11 +7,11 @@
 **An open, spatial, transport-agnostic protocol for food ecosystem coordination.**
 
 [![License: CC-BY 4.0](https://img.shields.io/badge/License-CC--BY%204.0-orange.svg)](https://creativecommons.org/licenses/by/4.0/)
-[![Version](https://img.shields.io/badge/Version-0.1%20Provisional-yellow.svg)]()
-[![Status](https://img.shields.io/badge/Status-Open%20for%20Review-green.svg)]()
+[![Version](https://img.shields.io/badge/Version-0.2%20Stable-green.svg)]()
+[![Status](https://img.shields.io/badge/Status-Stable-blue.svg)]()
 [![Spec](https://img.shields.io/badge/Spec-djowda.com%2Fdifp-blue.svg)](https://djowda.com/difp)
 
-[Read the Spec](https://djowda.com/difp) · [Download .docx](https://djowda.com/assets/docs/DIFP-v0_1-Provisional.docx) · [Open an Issue](../../issues) · [Contact](mailto:sales@djowda.com)
+[Read the Spec](https://djowda.com/difp) · [Download .docx](https://djowda.com/assets/docs/DIFP-v0_2.docx) · [Open an Issue](../../issues) · [Contact](mailto:sales@djowda.com)
 
 </div>
 
@@ -269,7 +269,7 @@ Full schemas, pseudocode, and implementation guide in the [specification](https:
 ```
 difp/
 ├── README.md                   ← you are here
-├── SPEC.md                     ← full specification in markdown
+├── SPEC.md                     ← full specification in markdown (v0.2)
 ├── CONTRIBUTING.md             ← how to contribute
 ├── LICENSE                     ← CC-BY 4.0
 ├── .github/
@@ -279,27 +279,27 @@ difp/
 │   │   └── implementation_report.md
 │   └── PULL_REQUEST_TEMPLATE.md
 ├── spec/
-│   └── DIFP-v0_1-Provisional.docx
+│   └── DIFP-v0_2.docx          ← full document (Word format)
 └── test-vectors/
     └── grid.json               ← geoToCellNumber reference vectors
 ```
 
 ---
 
-## Roadmap (v0.2 targets)
+## Roadmap
 
-| ID | Topic |
-|---|---|
-| A | Ed25519 message signing for trustless cross-node verification |
-| B | Supply & Demand Radar — cell-level scarcity/surplus heat maps |
-| C | Map route animation from TA cell pairs |
-| D | MQTT profile for IoT farm sensors |
-| E | USSD/SMS fallback for no-smartphone participants |
-| F | Admin monitoring layer |
-| G | Dispute resolution protocol |
-| H | Multi-currency pricing normalization |
-| I | Conformance test suite |
-| J | Third-party node registration API |
+| ID | Topic | Status |
+|---|---|---|
+| A | Ed25519 message signing for trustless cross-node verification | ✅ v0.2 |
+| B | Supply & Demand Radar — cell-level scarcity/surplus heat maps | ✅ v0.2 (Partially) |
+| C | Map route animation from TA cell pairs | 🔜 v0.3 |
+| D | MQTT profile for IoT farm sensors | ✅ v0.2 (Partially) |
+| E | USSD/SMS fallback for no-smartphone participants | 🔜 v0.3 |
+| F | Admin monitoring layer | 🔜 v0.3 |
+| G | Dispute resolution protocol | 🔜 v0.4 |
+| H | Multi-currency pricing normalization | 🔜 v0.4 |
+| I | Conformance test suite | 🔜 v0.2.1 |
+| J | Third-party node registration API | 🔜 v0.2.1 |
 
 ---
 
@@ -333,6 +333,6 @@ Free to implement, fork, extend, and commercialize. Credit to the Djowda Platfor
 - Web: [djowda.com](https://djowda.com)
 
 <div align="center">
-<sub>DIFP v0.1 · Provisional Specification · March 2026 · CC-BY 4.0</sub><br>
+<sub>DIFP v0.2 · Stable Specification · April 2026 · CC-BY 4.0</sub><br>
 <sub>Built by the Djowda Platform Team as an open contribution to global food security</sub>
 </div>
