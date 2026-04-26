@@ -1,8 +1,8 @@
 # DIFP — Djowda Interconnected Food Protocol
-## Open Protocol Specification · v0.2
+## Open Protocol Specification · v0.3
 
-**Status:** STABLE — v0.2 Message Envelope
-**Specification:** DIFP-CORE-0.2
+**Status:** STABLE PREVIEW — v0.3 PAD System
+**Specification:** DIFP-CORE-0.3
 **Issued:** April 2026
 **License:** [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 **Contact:** [sales@djowda.com](mailto:sales@djowda.com)
@@ -438,7 +438,7 @@ DIFP is designed to be adopted by independent operators — NGOs, national food 
 ```json
 {
     "protocol":  "DIFP",
-    "version":   "0.2",
+    "version":   "0.3",
     "nodeId":    "string",
     "coverage":  ["cellId", "cellId", "..."],
     "contact":   "email",
@@ -517,7 +517,7 @@ Implementations **MUST NOT** introduce proprietary barriers that prevent a DIFP-
 
 ### 15 · Message Envelope
 
-DIFP v0.2 introduces a universal message envelope — a fixed outer structure that wraps every message in the network, regardless of its content type, sender role, or transport layer. Every client, node, service, and IoT device speaks the same envelope. The payload is typed and varies; the envelope never does.
+DIFP v0.2 introduced a universal message envelope — a fixed outer structure that wraps every message in the network, regardless of its content type, sender role, or transport layer. Every client, node, service, and IoT device speaks the same envelope. The payload is typed and varies; the envelope never does.
 
 **Design principle:** `envelope = network behavior` · `payload = business logic`. The envelope answers who, what, when, and how. The payload answers what specifically.
 
@@ -741,29 +741,176 @@ Every DIFP node **MUST** implement the following processing pipeline for every r
 
 ---
 
-### 13 · Expansion Roadmap (Post-v0.1)
+### 19 · PAD System Overview
+
+The PAD — Preloaded Assets Delivery — is the catalog layer of DIFP. It is the mechanism that makes real-time food coordination lightweight, offline-capable, and scalable to millions of participants simultaneously. Rather than transmitting full item records over the wire, DIFP pre-loads a complete food database onto every participant's device at installation time. During live coordination, only a minimal delta — item ID, price, and availability — is ever transmitted.
+
+⚡ **Core insight:** A farmer's name, a product's photo, and a category label never change during a trade. Only the price and availability do. By separating static data (PAD) from live data (delta), DIFP reduces live message payload size by 99% compared to transmitting full item records.
+
+#### 19.1 The Fundamental Split
+
+| Layer | Name | Contents | When transmitted | Typical size |
+|---|---|---|---|---|
+| **Static** | PAD (`difp_pad`) | Full item metadata — name, brand, description, category, image, unit | Once, at app installation or update | ~5–15 MB compressed per country |
+| **Live** | Delta record | Item ID + availability + price only | Every trade message, presence update, or catalog sync | ~20–30 bytes per item |
+
+#### 19.2 Why This Architecture Wins
+
+Consider a store broadcasting its current inventory of 200 items. Without PAD, each item requires transmitting its name, description, category, image URL, and unit — easily 500 bytes per item, or 100KB per broadcast. With PAD, the same broadcast transmits only item IDs, prices, and availability flags — approximately 6KB total. At 10,000 stores in a single city, the difference between network-crushing and network-invisible is the PAD system.
+
+#### 19.3 PAD Scope
+
+Each PAD package is scoped by two dimensions: country code and component type.
+**PAD ID format:** `pad_{countryCode}_{typeCode}`
+
+| Example | Coverage |
+|---|---|
+| `pad_dz_f` | Algeria — Farmer catalog (~6,000 items) |
+| `pad_in_s` | India — Store catalog (~6,000 items) |
+| `pad_fr_r` | France — Restaurant catalog (~6,000 items) |
+
+---
+
+### 20 · Item Schema — difp_pad
+
+The `difp_pad` format defines the full static item record.
+
+#### 20.1 Full Item Record (difp_pad)
+
+```typescript
+interface DifpPadItem {
+  id:           number;         // unique item identifier within this PAD package
+  name:         string;          // item display name — localized per country
+  brand?:       string;         // brand name (optional)
+  description?: string;         // short item description (optional)
+  category:     string;          // top-level category
+  sub_category: string;          // sub-category within category
+  image:        string;          // asset reference ID
+  unit:         string;          // base unit: kg | g | l | ml | piece | box | ...
+  score:        number;          // quality/popularity score 0.0–5.0
+  gtin?:        string;         // GS1 barcode
+  item_uid:     string;          // globally namespaced DIFP identifier
+  tags?:        string[];       // searchable tags (optional)
+  season?:      string;         // availability season hint (optional)
+}
+```
+
+#### 20.2 CSV File Format
+
+PAD packages are distributed as compressed CSV files.
+**Header row:** `id,name,brand,description,price,is_available,category,sub_category,image,unit,score`
+
+#### 20.3 Category Taxonomy (normative)
+
+| Category | Code |
+|---|---|
+| Vegetables | `vegetables` |
+| Fruits | `fruits` |
+| Grains & Cereals | `grains` |
+| Legumes | `legumes` |
+| Meat & Poultry | `meat` |
+| Fish & Seafood | `fish` |
+| Dairy & Eggs | `dairy` |
+| Oils & Fats | `oils` |
+| Spices & Herbs | `spices` |
+| Beverages | `beverages` |
+| Packaged & Processed| `packaged` |
+| Bakery | `bakery` |
+| Agricultural Inputs | `inputs` |
+| Packaging & Supply | `supply` |
+
+---
+
+### 21 · Live Delta Sync
+
+The live delta is the only catalog data that ever travels over the wire during active coordination.
+
+#### 21.1 Delta Record Schema
+
+```typescript
+interface DeltaRecord {
+  id: number;       // references DifpPadItem.id in the local PAD
+  a:  boolean;      // availability (true = in stock, false = out of stock)
+  p:  number;        // current price in local currency units
+}
+```
+
+#### 21.2 Wire Format Example
+
+```json
+{
+  "catalog": [
+    { "id": 1,   "a": true,  "p": 120  },
+    { "id": 2,   "a": true,  "p": 680  }
+  ]
+}
+```
+
+#### 21.3 How the Client Resolves a Delta
+
+On receiving a delta record, the client looks up the `id` in the `localPAD` and merges the live price and availability.
+
+**PAD version mismatch:** If a delta references an item ID not found in the local PAD, the client **MUST** still process the trade using the item ID as a fallback identifier and schedule a PAD update.
+
+---
+
+### 22 · PAD Distribution & Versioning
+
+#### 22.1 PAD Version String
+**Format:** `pad_{countryCode}_{typeCode}_v{n}`
+
+#### 22.2 PAD Package Structure
+- `items.csv`
+- `manifest.json`
+- `assets/` (webp images)
+
+#### 22.3 Distribution Channels
+1. **Bundled at Installation:** Ensures first-time users can coordinate immediately.
+2. **Background OTA Update:** Downloads newer versions atomically.
+3. **Node-Served PAD:** Served via `GET /.well-known/difp/pad/{padId}`.
+
+---
+
+### 23 · PAD Conformance Requirements
+
+#### 23.1 MUST Implement
+- PAD package bundled at installation.
+- PAD item schema from Section 20.1.
+- Live delta format from Section 21.1.
+- `pad_version` field in catalog-bearing message payloads.
+- Checksum verification before applying updates.
+- Stable item IDs across versions.
+
+#### 23.2 MUST NOT
+- PAD CSV files **MUST NOT** contain price or availability data.
+- Images **MUST NOT** be embedded or base64-encoded inside the CSV.
+- Item IDs **MUST NOT** be reused or reassigned.
+
+---
+
+### 13 · Expansion Roadmap
 
 | ID | Topic | Status |
 |---|---|---|
 | A | **Message Signing** | ✅ v0.2 |
 | B | **Supply & Demand Radar** | ✅ v0.2 (Partially) |
-| C | **Map Route Animation** | 🔜 v0.3 |
+| C | **Map Route Animation** | 🔜 v0.4 |
 | D | **IoT Integration** | ✅ v0.2 (Partially) |
-| E | **USSD / SMS Fallback** | 🔜 v0.3 |
-| F | **Admin Monitoring Layer** | 🔜 v0.3 |
-| G | **Dispute Resolution** | 🔜 v0.4 |
-| H | **Multi-currency Pricing** | 🔜 v0.4 |
-| I | **Conformance Test Suite** | 🔜 v0.2.1 |
-| J | **Third-Party Registration** | 🔜 v0.2.1 |
+| E | **USSD / SMS Fallback** | 🔜 v0.4 |
+| F | **Admin Monitoring Layer** | 🔜 v0.4 |
+| G | **Dispute Resolution** | 🔜 v0.5 |
+| H | **Multi-currency Pricing** | 🔜 v0.5 |
+| I | **Conformance Test Suite** | 🔜 v0.3.1 |
+| J | **Third-Party Registration** | 🔜 v0.3.1 |
 
 ---
 
 ### 14 · How to Implement DIFP
 
-1. **Implement the Grid:** Port `geoToCellNumber` (Section 3.2) and validate against reference test vectors.
-2. **Stand Up a Presence Store:** Create a table/collection for `PresenceRecords` indexed by `cell_id` and `component_type`. Expose well-known endpoints.
-3. **Implement the Trade Engine:** Build the four-node write pattern adapted to your storage. Enforce role-based status transitions.
-4. **Add the Catalog:** Compile PAD packages for supported regions. Wire up live availability sync.
+1. **Implement the Grid:** Port `geoToCellNumber` (Section 3.2).
+2. **Stand Up a Presence Store:** Expose well-known endpoints.
+3. **Implement the Trade Engine:** Build the four-node write pattern.
+4. **Add the Catalog:** Compile PAD packages and wire up live availability sync.
 5. **Federate:** Register your node and implement the federation handshake.
 
 ---
@@ -777,5 +924,5 @@ DIFP was developed by the Djowda Platform team as an open contribution to the gl
 To contribute, open an issue or pull request at [djowda.com/difp](https://djowda.com/difp) or contact [sales@djowda.com](mailto:sales@djowda.com).
 
 **DIFP — Djowda Interconnected Food Protocol**
-Specification v0.2 · April 2026
+Specification v0.3 · April 2026
 [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) · [sales@djowda.com](mailto:sales@djowda.com) · [djowda.com](https://djowda.com)
