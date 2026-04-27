@@ -12,63 +12,63 @@
   "vectors": [
     {
       "description": "Algiers, Algeria",
-      "latitude":   36.7372,
-      "longitude":   3.0868,
-      "cellId":    3440210
+      "latitude":   36.7538,
+      "longitude":   3.0588,
+      "cellId":    1711767603
     },
     {
       "description": "Paris, France",
       "latitude":  48.8566,
       "longitude":  2.3522,
-      "cellId":   3467891
+      "cellId":   1705129761
     },
     {
       "description": "Tokyo, Japan",
-      "latitude":  35.6762,
-      "longitude": 139.6503,
-      "cellId":   6543210
+      "latitude":  35.6895,
+      "longitude": 139.6917,
+      "cellId":   2989365749
     },
     {
       "description": "New York, USA",
       "latitude":  40.7128,
       "longitude": -74.0060,
-      "cellId":   1823445
+      "cellId":   991131039
     },
     {
       "description": "Gulf of Guinea (0,0 origin)",
       "latitude":   0.0,
       "longitude":  0.0,
-      "cellId":   2952000
+      "cellId":   1683170000
     },
     {
       "description": "Sydney, Australia",
       "latitude":  -33.8688,
       "longitude":  151.2093,
-      "cellId":   6862310
+      "cellId":   3097104003
     },
     {
       "description": "São Paulo, Brazil",
-      "latitude":  -23.5505,
-      "longitude": -46.6333,
-      "cellId":   2898744
+      "latitude":  -23.533773,
+      "longitude": -46.625290,
+      "cellId":   1247170691
     },
     {
       "description": "Lagos, Nigeria",
-      "latitude":   6.5244,
-      "longitude":  3.3792,
-      "cellId":   3148230
+      "latitude":   6.45407,
+      "longitude":  3.39467,
+      "cellId":   1714879281
     },
     {
       "description": "North Pole (clamped)",
-      "latitude":  85.0,
+      "latitude":  90.0,
       "longitude":  0.0,
-      "cellId":   2952000
+      "cellId":   1683150000
     },
     {
       "description": "Antimeridian East",
       "latitude":   0.0,
       "longitude": 179.9999,
-      "cellId":   6847320
+      "cellId":   3366278000
     }
   ]
 }
