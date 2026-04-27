@@ -177,9 +177,9 @@ DIFP uses a Decentralized Identifier (DID) scheme that requires no central autho
 difp://{cellId}/{typeCode}/{componentId}
 
 // Examples
-difp://3440210/f/ali-farm-01        // Farmer in cell 3,440,210 (Algiers)
-difp://3440210/s/safeway-dz-042     // Store in the same cell
-difp://1820044/fa/cevital-plant-1   // Factory in cell 1,820,044
+difp://1711767603/f/ali-farm-01        // Farmer in cell 1,711,767,603 (Algiers)
+difp://1711767603/s/safeway-dz-042     // Store in the same cell
+difp://1820044/fa/cevital-plant-1      // Factory in cell 1,820,044
 ```
 
 #### 4.2 Identity Registration
@@ -192,9 +192,9 @@ Implementations using Firebase Auth **MAY** encode identity in the `displayName`
 
 ```
 // Format: "{cellId}_{typeCode}"
-"3440210_f"   // Farmer in cell 3,440,210
-"3440210_s"   // Store in the same cell
-"1820044_fa"  // Factory in cell 1,820,044
+"1711767603_f"   // Farmer in cell 1,711,767,603
+"1711767603_s"   // Store in the same cell
+"1820044_fa"     // Factory in cell 1,820,044
 ```
 
 This encoding is specific to the Firebase reference implementation. All other inter-node communication **MUST** use the full DID format.
@@ -231,9 +231,9 @@ interface PresenceRecord {
 Example:
 ```
 C/f/ali-farm-01/
-    did:            "difp://3440210/f/ali-farm-01"
+    did:            "difp://1711767603/f/ali-farm-01"
     component_name: "Ali's Farm"
-    cell_id:        3440210
+    cell_id:        1711767603
     status:         "open"
     ...
 ```
@@ -617,15 +617,15 @@ Keys **MUST** be sorted lexicographically. Whitespace **MUST** be removed. Float
   "version": "0.2",
 
   "from": {
-    "did":       "difp://3440210/f/ali-farm-01",
+    "did":       "difp://1711767603/f/ali-farm-01",
     "node":      "node-oran-01",
     "publicKey": "ed25519:7f8a9cABC...",
     "role":      "client"
   },
 
-  "target": { "type": "cell", "value": "3440210" },
+  "target": { "type": "cell", "value": "1711767603" },
   "mode":     "event",
-  "cell":     "3440210",
+  "cell":     "1711767603",
 
   "timestamp": "2026-04-17T14:32:10Z",
   "ttl":       300,
