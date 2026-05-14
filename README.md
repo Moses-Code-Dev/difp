@@ -7,11 +7,11 @@
 **An open, spatial, transport-agnostic protocol for food ecosystem coordination.**
 
 [![License: CC-BY 4.0](https://img.shields.io/badge/License-CC--BY%204.0-orange.svg)](https://creativecommons.org/licenses/by/4.0/)
-[![Version](https://img.shields.io/badge/Version-0.3%20Stable--Preview-green.svg)]()
-[![Status](https://img.shields.io/badge/Status-Stable--Preview-blue.svg)]()
+[![Version](https://img.shields.io/badge/Version-0.4-green.svg)]()
+[![Status](https://img.shields.io/badge/Status-Stable-blue.svg)]()
 [![Spec](https://img.shields.io/badge/Spec-djowda.com%2Fdifp-blue.svg)](https://djowda.com/difp)
 
-[Read the Spec](https://djowda.com/difp) · [Download .docx](https://djowda.com/assets/docs/DIFP-v0_3.docx) · [Open an Issue](../../issues) · [Contact](mailto:sales@djowda.com)
+[Read the Spec](https://djowda.com/difp) · [Download .docx](https://djowda.com/assets/docs/DIFP-v0_4.docx) · [Open an Issue](../../issues) · [Contact](mailto:sales@djowda.com)
 
 </div>
 
@@ -77,15 +77,20 @@ public static long geoToCellNumber(double latitude, double longitude) {
 }
 ```
 
-**Reference test vectors** — validate your port against these:
+**Reference test vectors** — validate your port against these (full set in [`test-vectors/grid.json`](./test-vectors/grid.json)):
 
 | Location | Latitude | Longitude | Cell ID |
 |---|---|---|---|
-| Algiers, Algeria | 36.7372 | 3.0868 | 3440210 |
-| Paris, France | 48.8566 | 2.3522 | 3467891 |
-| Tokyo, Japan | 35.6762 | 139.6503 | 6543210 |
-| New York, USA | 40.7128 | -74.0060 | 1823445 |
-| Gulf of Guinea | 0.0 | 0.0 | 2952000 |
+| Algiers, Algeria | 36.7538 | 3.0588 | 1,711,767,603 |
+| Paris, France | 48.8566 | 2.3522 | 1,705,129,761 |
+| Tokyo, Japan | 35.6895 | 139.6917 | 2,989,365,749 |
+| New York, USA | 40.7128 | -74.0060 | 991,131,039 |
+| Gulf of Guinea | 0.0 | 0.0 | 1,683,170,000 |
+| Sydney, Australia | -33.8688 | 151.2093 | 3,097,104,003 |
+| São Paulo, Brazil | -23.5338 | -46.6253 | 1,247,170,691 |
+| Lagos, Nigeria | 6.4541 | 3.3947 | 1,714,879,281 |
+| North Pole (clamped) | 90.0 | 0.0 | 1,683,150,000 |
+| Antimeridian East | 0.0 | 179.9999 | 3,366,278,000 |
 
 Discovery radius coverage:
 
@@ -241,7 +246,7 @@ Full schemas, pseudocode, and implementation guide in the [specification](https:
 
 ## Conformance
 
-### MUST implement
+### MUST implement (v0.1–v0.3 core)
 - `geoToCellNumber` with exact constants from Section 3.1
 - DID format `difp://{cellId}/{typeCode}/{componentId}`
 - All 10 component types
@@ -250,11 +255,20 @@ Full schemas, pseudocode, and implementation guide in the [specification](https:
 - Atomic write guarantees
 - `/.well-known/difp/` endpoints
 
+### MUST implement (v0.4 — Lobby + Registry)
+- `cellIdToLobbyId` with exact Lobby Layer constants from Section 24.1
+- `computeOwnedLobbies` at node startup
+- Announce lobbies to a registry via `registry.announce` on startup
+- Handle `GET /.well-known/difp/registry/lobby/{lobbyId}` (registries)
+- Handle `POST /.well-known/difp/registry/lobby/batch` (registries)
+- Resolve lobby from GPS before discovery and query registry (clients)
+
 ### SHOULD implement
 - PAD catalog system for offline item discovery
 - TA analytics node (with privacy restrictions)
 - Neighbor radius discovery (`getNearbyCells`)
 - Cross-node trade routing
+- `/.well-known/difp/registry/peers` for federation bootstrapping
 
 ### MAY implement
 - Custom component types (must not reuse canonical codes)
@@ -269,7 +283,7 @@ Full schemas, pseudocode, and implementation guide in the [specification](https:
 ```
 difp/
 ├── README.md                   ← you are here
-├── SPEC.md                     ← full specification in markdown (v0.3)
+├── SPEC.md                     ← full specification in markdown (v0.4)
 ├── CONTRIBUTING.md             ← how to contribute
 ├── LICENSE                     ← CC-BY 4.0
 ├── .github/
@@ -281,7 +295,8 @@ difp/
 ├── spec/
 │   └── README.md               ← document download links
 └── test-vectors/
-    └── grid.json               ← geoToCellNumber reference vectors
+    ├── grid.json               ← geoToCellNumber reference vectors (Layer 0)
+    └── lobby.json              ← cellIdToLobbyId reference vectors (Layer 1)
 ```
 
 ---
@@ -292,14 +307,15 @@ difp/
 |---|---|---|
 | A | Ed25519 message signing for trustless cross-node verification | ✅ v0.2 |
 | B | Supply & Demand Radar — cell-level scarcity/surplus heat maps | ✅ v0.2 (Partially) |
-| C | Map route animation from TA cell pairs | 🔜 v0.4 |
+| C | Map route animation from TA cell pairs | ✅ v0.4 |
 | D | MQTT profile for IoT farm sensors | ✅ v0.2 (Partially) |
-| E | USSD/SMS fallback for no-smartphone participants | 🔜 v0.4 |
-| F | Admin monitoring layer | 🔜 v0.4 |
+| E | USSD/SMS fallback for no-smartphone participants | 🔜 v0.5 |
+| F | Admin monitoring layer | 🔜 v0.5 |
 | G | Dispute resolution protocol | 🔜 v0.5 |
 | H | Multi-currency pricing normalization | 🔜 v0.5 |
-| I | Conformance test suite | 🔜 v0.3.1 |
-| J | Third-party node registration API | 🔜 v0.3.1 |
+| I | Conformance test suite | ✅ v0.4 (Partial) |
+| J | Third-party node registration API (Lobby + Registry) | ✅ v0.4 |
+| K | Federated node discovery via Lobby Layer | ✅ v0.4 |
 
 ---
 
@@ -333,6 +349,6 @@ Free to implement, fork, extend, and commercialize. Credit to the Djowda Platfor
 - Web: [djowda.com](https://djowda.com)
 
 <div align="center">
-<sub>DIFP v0.3 · Stable Preview · April 2026 · CC-BY 4.0</sub><br>
+<sub>DIFP v0.4 · Stable · May 2026 · CC-BY 4.0</sub><br>
 <sub>Built by the Djowda Platform Team as an open contribution to global food security</sub>
 </div>

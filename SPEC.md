@@ -1,9 +1,9 @@
 # DIFP — Djowda Interconnected Food Protocol
-## Open Protocol Specification · v0.3
+## Open Protocol Specification · v0.4
 
-**Status:** STABLE PREVIEW — v0.3 PAD System
-**Specification:** DIFP-CORE-0.3
-**Issued:** April 2026
+**Status:** STABLE — v0.4 Lobby & Registry
+**Specification:** DIFP-CORE-0.4
+**Issued:** May 2026
 **License:** [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 **Contact:** [sales@djowda.com](mailto:sales@djowda.com)
 
@@ -894,24 +894,26 @@ On receiving a delta record, the client looks up the `id` in the `localPAD` and 
 |---|---|---|
 | A | **Message Signing** | ✅ v0.2 |
 | B | **Supply & Demand Radar** | ✅ v0.2 (Partially) |
-| C | **Map Route Animation** | 🔜 v0.4 |
+| C | **Map Route Animation** | ✅ v0.4 |
 | D | **IoT Integration** | ✅ v0.2 (Partially) |
-| E | **USSD / SMS Fallback** | 🔜 v0.4 |
-| F | **Admin Monitoring Layer** | 🔜 v0.4 |
+| E | **USSD / SMS Fallback** | 🔜 v0.5 |
+| F | **Admin Monitoring Layer** | 🔜 v0.5 |
 | G | **Dispute Resolution** | 🔜 v0.5 |
 | H | **Multi-currency Pricing** | 🔜 v0.5 |
-| I | **Conformance Test Suite** | 🔜 v0.3.1 |
-| J | **Third-Party Registration** | 🔜 v0.3.1 |
+| I | **Conformance Test Suite** | ✅ v0.4 (Partial) |
+| J | **Third-Party Node Registration** | ✅ v0.4 |
+| K | **Lobby Layer & Federated Discovery** | ✅ v0.4 |
 
 ---
 
 ### 14 · How to Implement DIFP
 
-1. **Implement the Grid:** Port `geoToCellNumber` (Section 3.2).
+1. **Implement the Grid:** Port `geoToCellNumber` (Section 3.2). Validate against `test-vectors/grid.json`.
 2. **Stand Up a Presence Store:** Expose well-known endpoints.
 3. **Implement the Trade Engine:** Build the four-node write pattern.
 4. **Add the Catalog:** Compile PAD packages and wire up live availability sync.
-5. **Federate:** Register your node and implement the federation handshake.
+5. **Federate:** Implement the federation handshake (Section 10).
+6. **Register via Lobby Layer:** Compute your node's lobbies with `cellIdToLobbyId`, announce to a registry with `registry.announce`, and expose the registry query endpoints (Sections 24–28).
 
 ---
 
@@ -924,5 +926,323 @@ DIFP was developed by the Djowda Platform team as an open contribution to the gl
 To contribute, open an issue or pull request at [djowda.com/difp](https://djowda.com/difp) or contact [sales@djowda.com](mailto:sales@djowda.com).
 
 **DIFP — Djowda Interconnected Food Protocol**
-Specification v0.3 · April 2026
+Specification v0.4 · May 2026
 [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) · [sales@djowda.com](mailto:sales@djowda.com) · [djowda.com](https://djowda.com)
+
+---
+
+### 24 · Lobby Layer
+
+The Lobby layer is the second spatial abstraction in DIFP, sitting directly above the MinMax99 cell grid. It answers a fundamental network question that cells alone cannot: given a location anywhere on Earth, which node should I contact to find participants there?
+
+> **Cells handle precision. Lobbies handle routing.** A cell tells you where a participant is. A lobby tells you which node knows about participants in that region.
+
+#### 24.1 Lobby Constants (normative)
+
+All conformant implementations **MUST** use the following constants without modification. These values are derived directly from the Layer 0 grid constants and are **not** independently configurable.
+
+```python
+# Lobby grid constants — derived from MinMax99, MUST NOT be changed independently
+LOBBY_SIZE        = 41          # cells per lobby on each axis (41 × 41 = 1,681 cells)
+NUM_LOBBY_COLUMNS = 2000        # 82,000 / 41 — exact, 82,000 is divisible by 41
+NUM_LOBBY_ROWS    = 1025        # ceil(42,000 / 41) — ceiling; 42,000 mod 41 = 16 (partial strip)
+TOTAL_LOBBIES     = 2050000     # 2,000 × 1,025
+```
+
+#### 24.2 Physical Coverage
+
+Each lobby covers approximately **20.5 km × 20.5 km** (41 cells × 500 m per cell). This is intentionally sized to match a typical urban district, rural municipality, or regional market catchment area — making it a natural unit for node responsibility partitioning.
+
+#### 24.3 CellToLobbyNumber — Canonical Algorithm
+
+The mapping from cell to lobby is deterministic and requires no network call. Any implementation **MUST** produce identical lobby IDs from identical cell IDs.
+
+```javascript
+// Layer 1 encoding — same row-major philosophy as Layer 0
+function cellIdToLobbyId(cellId) {
+    let { xCell, yCell } = cellNumberToXY(cellId);    // Layer 0 reverse lookup
+    let lobbyX = Math.floor(xCell / LOBBY_SIZE);      // 0..1999
+    let lobbyY = Math.floor(yCell / LOBBY_SIZE);      // 0..1024
+    return BigInt(lobbyX) * BigInt(NUM_LOBBY_ROWS) + BigInt(lobbyY);
+}
+
+// Reverse: lobbyId → [lobbyX, lobbyY]
+function lobbyIdToXY(lobbyId) {
+    let lobbyX = Math.floor(Number(lobbyId) / NUM_LOBBY_ROWS);
+    let lobbyY = Number(lobbyId) % NUM_LOBBY_ROWS;
+    return { lobbyX, lobbyY };
+}
+
+// Local position within a lobby
+function cellIdToLocalXY(cellId) {
+    let { xCell, yCell } = cellNumberToXY(cellId);
+    return {
+        localX: xCell % LOBBY_SIZE,  // 0..40
+        localY: yCell % LOBBY_SIZE   // 0..40
+    };
+}
+```
+
+#### 24.4 Reference Test Vectors
+
+Validate your Layer 1 implementation against these vectors (see [`test-vectors/lobby.json`](./test-vectors/lobby.json) for the full machine-readable set).
+
+| Location | Cell ID | Lobby ID |
+|---|---|---|
+| Algiers, Algeria | 1,711,767,603 | 1,988,574 |
+| Paris, France | 1,705,129,761 | 1,980,620 |
+| Tokyo, Japan | 2,989,365,749 | 3,474,340 |
+| New York, USA | 991,131,039 | 1,151,116 |
+| Gulf of Guinea (0,0) | 1,683,170,000 | 1,954,832 |
+
+#### 24.5 Node Lobby Computation
+
+A node determines which lobbies it is responsible for by mapping all stored cell IDs through `cellIdToLobbyId` and collecting the unique set.
+
+```javascript
+function computeOwnedLobbies(storedCellIds) {
+    let lobbies = new Set();
+    for (let cellId of storedCellIds) {
+        lobbies.add(cellIdToLobbyId(cellId));
+    }
+    return lobbies; // deduplicated — typically far fewer entries than cells
+}
+```
+
+---
+
+### 25 · Node Registry
+
+The Node Registry is a publicly queryable index that maps lobby IDs to the DIFP nodes that hold data for those lobbies. It is the routing backbone of the federated network — without it, a client has no way to discover which node to contact for a given location.
+
+In DIFP v0.4, the registry is intentionally kept simple: it is a pure spatial routing index with no health scoring, no node roles, and no replication semantics. Those capabilities are deferred to v0.5.
+
+#### 25.1 Registry Data Model
+
+```json
+// Conceptual model — implementation storage is not prescribed
+// Registry: Map<lobbyId, Set<string>>
+// lobbyId → set of node endpoint URLs
+{
+  "83907": ["https://node-oran-01.difp", "https://node-algiers-02.difp"],
+  "84582": ["https://node-paris-01.difp"],
+  "76786": ["https://node-lagos-01.difp", "https://node-lagos-02.difp"]
+}
+```
+
+#### 25.2 Registry Architecture — v0.4
+
+DIFP v0.4 supports two registry deployment patterns. Both expose the same query interface (Section 27), so clients are unaffected by which pattern a network uses:
+
+- **Centralized registry:** A single globally accessible service (e.g. `registry-global.difp`). Suitable for early deployments.
+- **Federated registries:** Multiple regional registries that exchange lobby announcements. Each registry exposes a `/.well-known/difp/registry/peers` endpoint listing peer registries.
+
+#### 25.3 Registry Well-Known Endpoints
+
+Any service acting as a DIFP registry **MUST** expose the following endpoints:
+
+```
+# Query which nodes serve a lobby
+GET /.well-known/difp/registry/lobby/{lobbyId}
+Response: { "lobbyId": 83907, "nodes": ["https://node-oran-01.difp", ...] }
+
+# Bulk query — resolve multiple lobbies at once
+POST /.well-known/difp/registry/lobby/batch
+Body:     { "lobbyIds": [83907, 83908, 84582] }
+Response: { "results": { "83907": [...], "83908": [...], "84582": [...] } }
+
+# List all known peer registries (for federation bootstrapping)
+GET /.well-known/difp/registry/peers
+Response: { "registries": ["https://registry-global.difp", "https://registry-africa.difp"] }
+```
+
+#### 25.4 Node Registration at Startup
+
+When a DIFP node starts, it **MUST** announce its lobbies to at least one registry. The sequence is:
+
+1. Call `computeOwnedLobbies(storedCellIds)` — compute the set of lobby IDs the node currently holds data for.
+2. Send a `registry.announce` message (Section 27.1) to the registry with the lobby set and node endpoint.
+3. Re-announce whenever the lobby set changes (new participants registered, participants migrated out).
+
+---
+
+### 26 · Discovery Flow
+
+The lobby and registry layers exist to enable a single end-to-end use case: given a GPS location, find the DIFP nodes that hold participant data for that location.
+
+#### 26.1 Full Discovery Sequence
+
+```javascript
+// Step 1 — client computes spatial address from GPS
+const cellId  = geoToCellNumber(latitude, longitude);
+const lobbyId = cellIdToLobbyId(cellId);
+
+// Step 2 — client queries registry for nodes serving that lobby
+const nodes = await GET(`/.well-known/difp/registry/lobby/${lobbyId}`);
+// → ["https://node-oran-01.difp", "https://node-algiers-02.difp"]
+
+// Step 3 — client queries nodes for presence data
+for (const nodeEndpoint of nodes) {
+    const presenceRecords = await GET(`${nodeEndpoint}/.well-known/difp/cell/${cellId}`);
+    if (presenceRecords.length > 0) break; // or merge results from multiple nodes
+}
+
+// Step 4 — client uses presence records for trade initiation (Sections 5–7)
+```
+
+#### 26.2 Neighbor Discovery
+
+For radius-based discovery, the client resolves lobby IDs for all neighbor cells and batches the registry lookup:
+
+```javascript
+const nearbyCells  = getNearbyCells(centerCellId, radius);
+const nearbyLobbies = [...new Set(nearbyCells.map(cellIdToLobbyId))];
+
+// Single batched registry call instead of N individual calls
+const results = await POST('/.well-known/difp/registry/lobby/batch', { lobbyIds: nearbyLobbies });
+
+// Then query unique nodes from the merged result
+const uniqueNodes = [...new Set(Object.values(results.results).flat())];
+for (const nodeEndpoint of uniqueNodes) {
+    presenceRecords.push(...await GET(`${nodeEndpoint}/.well-known/difp/cell/${cellId}`));
+}
+```
+
+#### 26.3 No Registry Available
+
+If a client cannot reach any registry, it **MUST** fall back to direct node queries using hardcoded or cached node endpoints from prior sessions. A client **MUST NOT** fail silently — it **SHOULD** notify the user that discovery may be incomplete.
+
+#### 26.4 Multiple Nodes for the Same Lobby
+
+The registry may return multiple nodes for a single lobby. Clients **MUST** try nodes in order and **MAY** merge results from multiple nodes. Clients **MUST** deduplicate participants across node responses using their DID.
+
+---
+
+### 27 · Registry Messages
+
+DIFP v0.4 defines three canonical message types for the registry system. These extend the message type registry from Section 16 and follow the same dot-namespaced format and envelope structure from Section 15.
+
+#### 27.1 registry.announce
+
+Sent by a node to a registry to declare which lobbies it serves. This is the only write operation in the v0.4 registry protocol.
+
+```json
+{
+  "id":      "msg-20260510-la-9f3a",
+  "type":    "registry.announce",
+  "version": "0.4",
+  "from": {
+    "did":  "difp://3440210/a/node-oran-01",
+    "node": "node-oran-01",
+    "role": "node"
+  },
+  "target": { "type": "direct", "value": "difp://registry/global" },
+  "mode":  "event",
+  "cell":  "3440210",
+  "timestamp": "2026-05-10T08:00:00Z",
+  "ttl": 3600,
+  "payload": {
+    "nodeEndpoint": "https://node-oran-01.difp",
+    "lobbies": [83907, 83908, 83935, 84000]
+  }
+}
+```
+
+#### 27.2 registry.query
+
+Sent by a client or node to a registry to discover which nodes serve a given lobby. This is a `request` mode message — a `registry.response` **MUST** be returned.
+
+```json
+{
+  "id":      "msg-20260510-rq-4b2c",
+  "type":    "registry.query",
+  "version": "0.4",
+  "from": {
+    "did":  "difp://3440210/u/consumer-42",
+    "node": "node-oran-01",
+    "role": "client"
+  },
+  "target": { "type": "direct", "value": "difp://registry/global" },
+  "mode":  "request",
+  "cell":  "3440210",
+  "timestamp": "2026-05-10T09:32:00Z",
+  "ttl": 30,
+  "payload": {
+    "lobbyId": 83907
+  }
+}
+```
+
+> For bulk queries use `"lobbyIds": [83907, 83908, ...]` in the payload.
+
+#### 27.3 registry.response
+
+Returned by a registry in reply to a `registry.query`. The `context.parentId` **MUST** match the originating query message `id`.
+
+```json
+{
+  "id":      "msg-20260510-rr-7f9d",
+  "type":    "registry.response",
+  "version": "0.4",
+  "from": {
+    "did":  "difp://0/a/registry-global",
+    "node": "registry-global",
+    "role": "node"
+  },
+  "target": { "type": "direct", "value": "difp://3440210/u/consumer-42" },
+  "mode":  "response",
+  "cell":  "0",
+  "timestamp": "2026-05-10T09:32:00Z",
+  "ttl": 60,
+  "context": { "parentId": "msg-20260510-rq-4b2c" },
+  "payload": {
+    "lobbyId": 83907,
+    "nodes": [
+      "https://node-oran-01.difp",
+      "https://node-algiers-02.difp"
+    ]
+  }
+}
+```
+
+#### 27.4 Updated Message Type Registry
+
+The following types are added to the registry from Section 16.2:
+
+| Domain | Type | Class | Description |
+|---|---|---|---|
+| **registry** | `registry.announce` | System | Node announces which lobbies it serves to a registry |
+| | `registry.query` | Query | Client or node queries which nodes serve a lobby |
+| | `registry.response` | Query | Registry replies with the node list for a lobby |
+
+---
+
+### 28 · v0.4 Conformance Requirements
+
+This section is normative. Conformant DIFP v0.4 implementations **MUST** satisfy all requirements below in addition to all prior conformance requirements from Sections 11 and 23.
+
+#### 28.1 MUST Implement (Nodes)
+
+- `cellIdToLobbyId` with exact constants from Section 24.1.
+- `computeOwnedLobbies` — compute lobby set from all stored cell IDs.
+- Send `registry.announce` to at least one registry on startup and on lobby set change.
+- Expose `/.well-known/difp/cell/{cellId}` responding with current `PresenceRecord` list.
+
+#### 28.2 MUST Implement (Registries)
+
+- Accept `registry.announce` messages and update the lobby→node index.
+- `GET /.well-known/difp/registry/lobby/{lobbyId}` — single lobby query.
+- `POST /.well-known/difp/registry/lobby/batch` — bulk lobby query.
+
+#### 28.3 MUST Implement (Clients)
+
+- Compute `lobbyId = cellIdToLobbyId(cellId)` before initiating discovery.
+- Query the registry for node endpoints before querying cell presence.
+- Fall back to cached or hardcoded node endpoints if no registry is reachable (Section 26.3).
+- Deduplicate participants by DID when merging responses from multiple nodes.
+
+#### 28.4 SHOULD Implement
+
+- `GET /.well-known/difp/registry/peers` — expose known peer registries for federation bootstrapping.
+- Re-announce lobbies to registry on a scheduled interval (e.g. every 24 hours) to handle registry restarts.
+- Batch neighbor lobby lookups using `POST /.well-known/difp/registry/lobby/batch` to minimize round trips.
