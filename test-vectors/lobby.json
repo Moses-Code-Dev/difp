@@ -1,0 +1,83 @@
+{
+  "description": "Reference test vectors for DIFP cellIdToLobbyId algorithm validation (Layer 1 — Lobby Layer)",
+  "version": "0.1",
+  "constants": {
+    "LOBBY_SIZE":        41,
+    "NUM_LOBBY_COLUMNS": 2000,
+    "NUM_LOBBY_ROWS":    1025,
+    "TOTAL_LOBBIES":     2050000
+  },
+  "note": "All conformant DIFP v0.4 nodes MUST produce identical lobbyId values from identical cellId inputs. Use the grid.json vectors to first validate geoToCellNumber, then validate cellIdToLobbyId against these vectors.",
+  "vectors": [
+    {
+      "description": "Algiers, Algeria",
+      "latitude":   36.7538,
+      "longitude":   3.0588,
+      "cellId":   1711767603,
+      "lobbyId":  1988574
+    },
+    {
+      "description": "Paris, France",
+      "latitude":  48.8566,
+      "longitude":  2.3522,
+      "cellId":  1705129761,
+      "lobbyId": 1980620
+    },
+    {
+      "description": "Tokyo, Japan",
+      "latitude":  35.6895,
+      "longitude": 139.6917,
+      "cellId":  2989365749,
+      "lobbyId": 3474340
+    },
+    {
+      "description": "New York, USA",
+      "latitude":  40.7128,
+      "longitude": -74.0060,
+      "cellId":   991131039,
+      "lobbyId":  1151116
+    },
+    {
+      "description": "Gulf of Guinea (0,0 origin)",
+      "latitude":   0.0,
+      "longitude":  0.0,
+      "cellId":  1683170000,
+      "lobbyId": 1954832
+    },
+    {
+      "description": "Sydney, Australia",
+      "latitude":  -33.8688,
+      "longitude":  151.2093,
+      "cellId":  3097104003,
+      "lobbyId": 3597170
+    },
+    {
+      "description": "São Paulo, Brazil",
+      "latitude":  -23.533773,
+      "longitude": -46.625290,
+      "cellId":  1247170691,
+      "lobbyId": 1448718
+    },
+    {
+      "description": "Lagos, Nigeria",
+      "latitude":   6.45407,
+      "longitude":  3.39467,
+      "cellId":  1714879281,
+      "lobbyId": 1991564
+    },
+    {
+      "description": "North Pole (clamped)",
+      "latitude":  90.0,
+      "longitude":  0.0,
+      "cellId":  1683150000,
+      "lobbyId": 1954831
+    },
+    {
+      "description": "Antimeridian East",
+      "latitude":   0.0,
+      "longitude": 179.9999,
+      "cellId":  3366278000,
+      "lobbyId": 3910100
+    }
+  ]
+}
